@@ -7,15 +7,19 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-TOKEN = os.getenv("TOKEN")
-
-if not TOKEN:
-    print("❌ Không tìm thấy TOKEN")
-    exit(1)
-
 @bot.event
 async def on_ready():
-    print(f"✅ Bot đã online: {bot.user}")
+    print(f"✅ Bot đã đăng nhập: {bot.user}")
+
+@bot.command()
+async def ping(ctx):
+    await ctx.send("Pong!")
+
+TOKEN = os.getenv("TOKEN")
+
+if TOKEN is None:
+    raise RuntimeError("❌ TOKEN không tồn tại. Kiểm tra Variables trên Railway.")
 
 bot.run(TOKEN)
+
 
