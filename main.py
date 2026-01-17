@@ -4,69 +4,103 @@ import requests
 import os
 from datetime import datetime, timezone
 from dateutil import parser
-import os
-TOKEN = os.getenv("TOKEN")
 
+# ===== ĐỌC TOKEN TỪ ENV (RAILWAY) =====
+TOKEN = os.getenv("TOKEN")
+if not TOKEN:
+    raise RuntimeError("❌ TOKEN chưa được set trong Railway Variables")
+
+# ===== BOT SETUP =====
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-DANH_SACH_DEN = [35041999, 1059424707, 994446201, 35706033,36055514, 34771501, 34766049, 16098118,
-    33295727, 34825823]
+# ===== DANH SÁCH GROUP BLACKLIST =====
+DANH_SACH_DEN = [
+    35041999, 1059424707, 994446201, 35706033,
+    36055514, 34771501, 34766049, 16098118,
+    33295727, 34825823
+]
 
 @bot.event
 async def on_ready():
-    print("Bot đã online!")
+    print(f"✅ Bot đã online: {bot.user}")
 
+# ===== LỆNH CHECK =====
 @bot.command()
 async def check(ctx, username: str):
     try:
-
         payload = {"usernames": [username], "excludeBannedUsers": True}
-        res = requests.post("https://users.roblox.com/v1/usernames/users", json=payload).json()
+        res = requests.post(
+            "https://users.roblox.com/v1/usernames/users",
+            json=payload,
+            timeout=10
+        ).json()
 
-        if not res.get('data'):
+        if not res.get("data"):
             await ctx.send(f"❌ Không tìm thấy quân nhân: **{username}**")
             return
 
-        user_id = res['data'][0]['id']
+        user_id = res["data"][0]["id"]
 
+        info = requests.get(
+            f"https://users.roblox.com/v1/users/{user_id}",
+            timeout=10
+        ).json()
 
-        info = requests.get(f"https://users.roblox.com/v1/users/{user_id}").json()
-        friends = requests.get(f"https://friends.roblox.com/v1/users/{user_id}/friends/count").json().get('count', 0)
+        friends = requests.get(
+            f"https://friends.roblox.com/v1/users/{user_id}/friends/count",
+            timeout=10
+        ).json().get("count", 0)
 
+        thumb = requests.get(
+            f"https://thumbnails.roblox.com/v1/users/avatar-headshot"
+            f"?userIds={user_id}&size=420x420&format=Png",
+            timeout=10
+        ).json()
 
-        thumb = requests.get(f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=420x420&format=Png").json()
-        avatar_url = thumb['data'][0]['imageUrl'] if 'data' in thumb else None
+        avatar_url = thumb["data"][0]["imageUrl"] if thumb.get("data") else None
 
-
-        safe_chat = "Bật (Hạn chế)" if info.get('isVieweeSafeChat') else "Tắt (Bình thường)"
-        created_date = parser.isoparse(info['created']).replace(tzinfo=timezone.utc)
+        created_date = parser.isoparse(info["created"]).replace(tzinfo=timezone.utc)
         age = (datetime.now(timezone.utc) - created_date).days
 
-        groups = requests.get(f"https://groups.roblox.com/v2/users/{user_id}/groups/roles").json()
-        bad_found = [f"🛑 **{g['group']['name']}** ({g['group']['id']})" for g in groups.get('data', []) if g['group']['id'] in DANH_SACH_DEN]
+        groups = requests.get(
+            f"https://groups.roblox.com/v2/users/{user_id}/groups/roles",
+            timeout=10
+        ).json()
 
+        bad_found = [
+            f"🛑 **{g['group']['name']}** ({g['group']['id']})"
+            for g in groups.get("data", [])
+            if g["group"]["id"] in DANH_SACH_DEN
+        ]
 
-        embed = discord.Embed(title="🎖️ HỒ SƠ QUÂN NHÂN", color=0x2b2d31)
-        if avatar_url: embed.set_thumbnail(url=avatar_url) 
+        safe_chat = "Bật (Hạn chế)" if info.get("isVieweeSafeChat") else "Tắt (Bình thường)"
 
-        embed.add_field(name="📌 Displayname", value=info.get('displayName'), inline=True) 
+        embed = discord.Embed(
+            title="🎖️ HỒ SƠ QUÂN NHÂN",
+            color=0x2b2d31
+        )
+
+        if avatar_url:
+            embed.set_thumbnail(url=avatar_url)
+
+        embed.add_field(name="📌 Displayname", value=info.get("displayName"), inline=True)
         embed.add_field(name="👤 Username", value=username, inline=True)
         embed.add_field(name="🆔 Roblox ID", value=user_id, inline=True)
         embed.add_field(name="🛡️ Safe Chat", value=safe_chat, inline=True)
-        embed.add_field(name="🗓️ Ngày gia nhập", value=created_date.strftime("%d/%m/%Y"), inline=True) 
-        embed.add_field(name="⏳ Tuổi tài khoản", value=f"{age} ngày", inline=True) 
-        embed.add_field(name="👥 Số bạn bè", value=f"{friends} người", inline=True) 
-
+        embed.add_field(name="🗓️ Ngày gia nhập", value=created_date.strftime("%d/%m/%Y"), inline=True)
+        embed.add_field(name="⏳ Tuổi tài khoản", value=f"{age} ngày", inline=True)
+        embed.add_field(name="👥 Số bạn bè", value=f"{friends} người", inline=True)
 
         if age < 100 or friends < 50:
             warns = []
-            if age < 100: warns.append(f"🔴 Tuổi tài khoản thấp ({age}/100)")
-            if friends < 50: warns.append(f"🔴 Ít bạn bè ({friends}/50)")
+            if age < 100:
+                warns.append(f"🔴 Tuổi tài khoản thấp ({age}/100)")
+            if friends < 50:
+                warns.append(f"🔴 Ít bạn bè ({friends}/50)")
             embed.add_field(name="⚠️ CẢNH BÁO TIÊU CHUẨN", value="\n".join(warns), inline=False)
             embed.color = 0xffa500
-
 
         if bad_found:
             embed.add_field(name="🚨 GROUP BLACKLIST!", value="\n".join(bad_found), inline=False)
@@ -75,9 +109,14 @@ async def check(ctx, username: str):
             embed.add_field(name="🛡️ Trạng thái", value="✅ Không có group blacklist", inline=False)
 
         await ctx.send(embed=embed)
+
     except Exception as e:
-        await ctx.send(f"⚠️ Lỗi trinh sát: {e}")
+        await ctx.send(f"⚠️ Lỗi trinh sát: `{e}`")
+
+# ===== CHẠY BOT =====
 bot.run(TOKEN)
+
+
 
 
 
