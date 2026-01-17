@@ -75,5 +75,6 @@ async def check(ctx, username: str):
         await ctx.send(embed=embed)
     except Exception as e:
         await ctx.send(f"⚠️ Lỗi trinh sát: {e}")
-bot.run(os.environ['DISCORD_TOKEN'])
+bot.run(os.environ['MTQ2MTMyMTQyNzQwMjc1MjE0OA.Gej2GU.n7PqCFEQPuZUG7GnbWWdEyk2fuGzD7QB4hUfw0'])
+
 
