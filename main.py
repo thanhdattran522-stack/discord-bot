@@ -6,15 +6,13 @@ from datetime import datetime, timezone
 from dateutil import parser
 
 TOKEN = os.getenv("TOKEN")
-
+if not TOKEN:
+    raise RuntimeError("❌ TOKEN không tồn tại – kiểm tra Railway Variables")
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-DANH_SACH_DEN = [
-    35041999, 1059424707, 994446201, 35706033, 36055514,
-    34771501, 34766049, 16098118, 33295727, 34825823
-]
+DANH_SACH_DEN = [35041999, 1059424707, 994446201, 35706033, 36055514,34771501, 34766049, 16098118, 33295727, 34825823]
 
 @bot.event
 async def on_ready():
@@ -98,6 +96,7 @@ if not TOKEN:
     raise RuntimeError("❌ TOKEN không tồn tại. Kiểm tra Railway Variables!")
 
 bot.run(TOKEN)
+
 
 
 
