@@ -4,9 +4,6 @@ import requests
 import os
 from datetime import datetime, timezone
 from dateutil import parser
-from keep_alive import keep_alive
-
-keep_alive()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -85,3 +82,4 @@ async def check(ctx, username: str):
         await ctx.send(f"⚠️ Lỗi: {e}")
 
 bot.run(os.environ["DISCORD_TOKEN"])
+
