@@ -4,6 +4,8 @@ import requests
 import os
 from datetime import datetime, timezone
 from dateutil import parser
+import os
+TOKEN = os.getenv("TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -75,7 +77,8 @@ async def check(ctx, username: str):
         await ctx.send(embed=embed)
     except Exception as e:
         await ctx.send(f"⚠️ Lỗi trinh sát: {e}")
-bot.run(os.environ['DISCORD_TOKEN'])
+bot.run(TOKEN)
+
 
 
 
