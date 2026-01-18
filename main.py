@@ -68,7 +68,7 @@ async def kiemtra(ctx, username: str):
         bad_groups = []
         for g in all_groups:
             g_id = g['group']['id']
-            if g_id in DAN_SACH_DEN_GROUP:
+            if g_id in DANH_SACH_DEN_GROUP:
                 bad_groups.append(f"🛑 **{g['group']['name']}**")
                 group_display_list.append(f"🛑 **{g['group']['name']}**")
             else:
@@ -120,4 +120,5 @@ async def kiemtra(ctx, username: str):
         await ctx.send(f"⚠️ Lỗi: {e}")
 
 bot.run(TOKEN)
+
 
