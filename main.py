@@ -19,7 +19,7 @@ DANH_SACH_DEN = [35041999, 1059424707, 994446201, 35706033, 36055514, 34771501, 
 # LỚP XỬ LÝ NÚT BẤM (BUTTON)
 class GroupView(discord.ui.View):
     def __init__(self, group_text):
-        super().__init__(timeout=60) # Nút tồn tại trong 60 giây
+        super().__init__(timeout=60)
         self.group_text = group_text
 
     @discord.ui.button(label="Xem danh sách nhóm", style=discord.ButtonStyle.grey, emoji="📋")
@@ -32,11 +32,12 @@ class GroupView(discord.ui.View):
 
 @bot.event
 async def on_ready():
-    print(f"✅ Bot đã online")
+    print(f"✅ Radar VMB đã sẵn sàng trên Railway")
 
 @bot.command()
 async def check(ctx, username: str):
     try:
+        # 1. TRUY XUẤT THÔNG TIN CƠ BẢN
         payload = {"usernames": [username], "excludeBannedUsers": True}
         res = requests.post("https://users.roblox.com/v1/usernames/users", json=payload).json()
 
@@ -54,10 +55,10 @@ async def check(ctx, username: str):
         created_date = parser.isoparse(info["created"]).replace(tzinfo=timezone.utc)
         age = (datetime.now(timezone.utc) - created_date).days
 
-        # LẤY DỮ LIỆU NHÓM
+        # 2. TRUY XUẤT DỮ LIỆU NHÓM (QUAN TRỌNG)
         groups_data = requests.get(f"https://groups.roblox.com/v2/users/{user_id}/groups/roles").json()
         all_groups = groups_data.get("data", [])
-        total_groups = len(all_groups) # Xác định số lượng nhóm
+        total_groups = len(all_groups) # Đây là số lượng nhóm ngài cần xem
         
         group_display_list = []
         bad_found = []
@@ -74,18 +75,22 @@ async def check(ctx, username: str):
             else:
                 group_display_list.append(f"▫️ {g_name} - *{role}*")
 
-        # KHỞI TẠO EMBED
+        # 3. TẠO EMBED HIỂN THỊ
         embed = discord.Embed(title="🎖️ HỒ SƠ QUÂN NHÂN", color=0x2b2d31)
         embed.set_thumbnail(url=avatar_url)
+        
         embed.add_field(name="📌 Displayname", value=info["displayName"], inline=True)
         embed.add_field(name="👤 Username", value=username, inline=True)
         embed.add_field(name="🆔 Roblox ID", value=user_id, inline=True)
+        
         embed.add_field(name="🛡️ Safe Chat", value=safe_chat, inline=True)
         embed.add_field(name="🗓️ Ngày gia nhập", value=created_date.strftime("%d/%m/%Y"), inline=True)
         embed.add_field(name="⏳ Tuổi tài khoản", value=f"{age} ngày", inline=True)
+        
         embed.add_field(name="👥 Số bạn bè", value=f"{friends} người", inline=True)
+        embed.add_field(name="🏰 Tổng số group", value=f"{total_groups} nhóm", inline=True) # HIỂN THỊ SỐ NHÓM TẠI ĐÂY
 
-        # CẢNH BÁO TIÊU CHUẨN (Đã thêm kiểm tra dưới 5 nhóm)
+        # CẢNH BÁO TIÊU CHUẨN
         if age < 100 or friends < 50 or total_groups < 5:
             warns = []
             if age < 100: warns.append(f"🔴 Tuổi tài khoản thấp ({age}/100)")
@@ -95,15 +100,15 @@ async def check(ctx, username: str):
             embed.add_field(name="⚠️ CẢNH BÁO TIÊU CHUẨN", value="\n".join(warns), inline=False)
             embed.color = 0xffa500
 
-        # PHÁT HIỆN BLACKLIST
+        # BLACKLIST CHECK
         if bad_found:
             embed.add_field(name="🚨 GROUP BLACKLIST PHÁT HIỆN!", value="\n".join(bad_found), inline=False)
             embed.color = 0xff0000
         elif not (age < 100 or friends < 50 or total_groups < 5):
             embed.add_field(name="🛡️ Trạng thái hiện tại", value="✅ Không có group blacklist", inline=False)
 
-        # CHUẨN BỊ NÚT BẤM VÀ DANH SÁCH NHÓM
-        group_text = f"📋 **DANH SÁCH NHÓM ({total_groups}):**\n\n" + ("\n".join(group_display_list) if group_display_list else "Không tham gia nhóm nào.")
+        # NÚT BẤM XEM CHI TIẾT
+        group_text = f"📋 **DANH SÁCH CHI TIẾT ({total_groups} NHÓM):**\n\n" + ("\n".join(group_display_list) if group_display_list else "Không tham gia nhóm nào.")
         view = GroupView(group_text)
 
         await ctx.send(embed=embed, view=view)
@@ -112,5 +117,6 @@ async def check(ctx, username: str):
         await ctx.send(f"⚠️ Lỗi trinh sát: {e}")
 
 bot.run(TOKEN)
+
 
 
