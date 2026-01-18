@@ -12,7 +12,8 @@ if not TOKEN:
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+# ĐỔI TIỀN TỐ SANG ?
+bot = commands.Bot(command_prefix="?", intents=intents)
 
 DANH_SACH_DEN = [35041999, 1059424707, 994446201, 35706033, 36055514, 34771501, 33945834, 34825823, 35001403, 33896530, 34766049, 35770147, 11641165, 32783999, 35588235, 33156070, 34766049, 16098118, 33295727, 34825823, 35017460, 35706033, 34334809, 35588235, 35770147, 35017460, 35524185, 34838981, 34285411, 33295727, 661736202, 35006177, 34857314]
 
@@ -32,10 +33,11 @@ class GroupView(discord.ui.View):
 
 @bot.event
 async def on_ready():
-    print(f"✅ Radar VMB đã sẵn sàng trên Railway")
+    print(f"✅ KSQS bot đã online")
 
+# ĐỔI TÊN LỆNH SANG kiemtra
 @bot.command()
-async def check(ctx, username: str):
+async def kiemtra(ctx, username: str):
     try:
         # 1. TRUY XUẤT THÔNG TIN CƠ BẢN
         payload = {"usernames": [username], "excludeBannedUsers": True}
@@ -55,10 +57,10 @@ async def check(ctx, username: str):
         created_date = parser.isoparse(info["created"]).replace(tzinfo=timezone.utc)
         age = (datetime.now(timezone.utc) - created_date).days
 
-        # 2. TRUY XUẤT DỮ LIỆU NHÓM (QUAN TRỌNG)
+        # 2. TRUY XUẤT DỮ LIỆU NHÓM
         groups_data = requests.get(f"https://groups.roblox.com/v2/users/{user_id}/groups/roles").json()
         all_groups = groups_data.get("data", [])
-        total_groups = len(all_groups) # Đây là số lượng nhóm ngài cần xem
+        total_groups = len(all_groups)
         
         group_display_list = []
         bad_found = []
@@ -88,7 +90,7 @@ async def check(ctx, username: str):
         embed.add_field(name="⏳ Tuổi tài khoản", value=f"{age} ngày", inline=True)
         
         embed.add_field(name="👥 Số bạn bè", value=f"{friends} người", inline=True)
-        embed.add_field(name="🏰 Tổng số group", value=f"{total_groups} nhóm", inline=True) # HIỂN THỊ SỐ NHÓM TẠI ĐÂY
+        embed.add_field(name="🏰 Tổng số group", value=f"{total_groups} group", inline=True)
 
         # CẢNH BÁO TIÊU CHUẨN
         if age < 100 or friends < 50 or total_groups < 5:
@@ -117,6 +119,3 @@ async def check(ctx, username: str):
         await ctx.send(f"⚠️ Lỗi trinh sát: {e}")
 
 bot.run(TOKEN)
-
-
-
