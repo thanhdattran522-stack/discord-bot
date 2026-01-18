@@ -33,7 +33,7 @@ class GroupView(discord.ui.View):
 
 @bot.event
 async def on_ready():
-    print(f"✅ Bot KSQS đã online)
+    print(f"✅ Bot KSQS đã online")
 
 # ĐỔI TÊN LỆNH SANG kiemtra
 @bot.command()
@@ -119,3 +119,4 @@ async def kiemtra(ctx, username: str):
         await ctx.send(f"⚠️ Lỗi: {e}")
 
 bot.run(TOKEN)
+
