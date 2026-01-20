@@ -1,16 +1,16 @@
 import discord
 from discord.ext import commands
 import requests
-import os
+import os # Thư viện cần thiết để đọc biến môi trường
 import json
 from datetime import datetime, timezone
 from dateutil import parser
 
-# 1. ĐỊNH NGHĨA BIẾN HỆ THỐNG (QUAN TRỌNG: FIX LỖI TOKEN)
-TOKEN = "VÀO_ĐÂY_TOKEN_CỦA_NGÀI" # Hoặc dùng os.getenv("TOKEN")
-FILE_DB = "blacklist_dynamic.json"
+# --- 1. CẤU HÌNH BẢO MẬT ---
+# Bot sẽ tự động tìm biến có tên là 'TOKEN' trong phần Variables của Railway
+TOKEN = os.getenv("TOKEN") 
 
-# Danh sách ID gốc của đơn vị (Ngài hãy dán tất cả ID vào đây)
+FILE_DB = "blacklist_dynamic.json"
 DANH_SACH_DEN_GOC = [
     576559939, 998028484, 47361536, 205543849, 415009980, 34285411, 123469798, 
     32860218, 1059424707, 130818406, 35706033, 35108918, 34973030, 35109046, 
@@ -32,7 +32,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="?", intents=intents)
 
-# --- LỆNH: HIỆN TOÀN BỘ GROUP BLACKLIST TRONG CODE ---
+# --- 2. LỆNH KIỂM TRA TOÀN BỘ DANH SÁCH TRONG CODE ---
 @bot.command()
 async def check_blacklist(ctx):
     tong_den = list(set(DANH_SACH_DEN_GOC + DANH_SACH_THEM))
@@ -51,13 +51,11 @@ async def check_blacklist(ctx):
     for i in range(0, len(content), 2000):
         await ctx.send(content[i:i+2000])
 
-# --- LỆNH: KIỂM TRA HỒ SƠ 4 TẦNG LỌC (FIX SYNTAX) ---
+# --- 3. LỆNH KIỂM TRA HỒ SƠ 4 TẦNG LỌC ---
 @bot.command()
 async def kiemtra(ctx, username: str):
     try:
-        # Lấy dữ liệu Roblox
-        payload = {"usernames": [username], "excludeBannedUsers": True}
-        res = requests.post("https://users.roblox.com/v1/usernames/users", json=payload).json()
+        res = requests.post("https://users.roblox.com/v1/usernames/users", json={"usernames": [username], "excludeBannedUsers": True}).json()
         if not res.get("data"): return await ctx.send(f"❌ Không tìm thấy: **{username}**")
 
         u_data = res["data"][0]
@@ -69,7 +67,6 @@ async def kiemtra(ctx, username: str):
         all_groups = g_data.get("data", [])
         
         avatar_url = requests.get(f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=420x420&format=Png").json()["data"][0]["imageUrl"]
-        
         created_date = parser.isoparse(info["created"]).replace(tzinfo=timezone.utc)
         age = (datetime.now(timezone.utc) - created_date).days
         sc_bool = info.get("isVieweeSafeChat")
@@ -81,19 +78,17 @@ async def kiemtra(ctx, username: str):
         if friends < 50: warns.append(f"🔴 Bạn bè: **ÍT** ({friends}/50 người)")
         if len(all_groups) < 5: warns.append(f"🔴 Nhóm: **ÍT** ({len(all_groups)}/5 group)")
 
-        # Kiểm tra Blacklist
         bad_found = []
         tong_den = list(set(DANH_SACH_DEN_GOC + DANH_SACH_THEM))
         for g in all_groups:
             if g['group']['id'] in tong_den:
                 bad_found.append(f"🛑 **{g['group']['name']}** ({g['group']['id']})")
 
-        # THIẾT KẾ EMBED - FIX LỖI SYNTAX (Xoá dấu ngoặc đơn lồng desc)
+        # THIẾT KẾ EMBED (FIX LỖI SYNTAX)
         embed = discord.Embed(title="HỆ THỐNG KIỂM TRA KIỂM SOÁT QUÂN SỰ SROV", color=0x2ecc71)
         embed.set_author(name="Bộ Tư Lệnh Kiểm Soát Quân Sự")
         embed.set_thumbnail(url=avatar_url)
         
-        # Nối chuỗi bằng += để tránh lỗi SyntaxError
         desc = f"📌 **Displayname:** {display_name}\n"
         desc += f"👤 **Username:** {actual_name}\n"
         desc += f"🆔 **Roblox ID:** {user_id}\n"
@@ -122,4 +117,8 @@ async def kiemtra(ctx, username: str):
         await ctx.send(embed=embed)
     except Exception as e: await ctx.send(f"⚠️ Lỗi: {e}")
 
-bot.run(TOKEN) # Lệnh chạy Bot (Đã sửa lỗi định nghĩa TOKEN)
+# Kiểm tra xem Token có tồn tại không trước khi chạy
+if TOKEN:
+    bot.run(TOKEN)
+else:
+    print("❌ LỖI: Biến môi trường 'TOKEN' chưa được thiết lập!")
