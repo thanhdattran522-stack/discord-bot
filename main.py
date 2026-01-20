@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from dateutil import parser
 
 # --- 1. CẤU HÌNH HỆ THỐNG & BẢO MẬT ---
-TOKEN = os.getenv("TOKEN") # Lấy từ Railway Variables
+TOKEN = os.getenv("TOKEN")
 FILE_DB = "blacklist_dynamic.json"
 
 # Danh sách gốc cố định
@@ -125,4 +125,5 @@ async def check_blacklist(ctx):
     for i in range(0, len(content), 2000): await ctx.send(content[i:i+2000])
 
 if TOKEN: bot.run(TOKEN) #
+
 
