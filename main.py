@@ -80,7 +80,7 @@ async def kiemtra(ctx, username: str):
         thumb = requests.get(f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=420x420&format=Png").json()
         avatar_url = thumb["data"][0]["imageUrl"]
         
-        safe_chat = "🔴 Bật (Loại)" if info.get("isVieweeSafeChat") else "🟢 Tắt (Bình thường)"
+        safe_chat = "🔴 Bật " if info.get("isVieweeSafeChat") else "🟢 Tắt "
         created_date = parser.isoparse(info["created"]).replace(tzinfo=timezone.utc)
         age = (datetime.now(timezone.utc) - created_date).days
 
@@ -117,14 +117,20 @@ async def kiemtra(ctx, username: str):
         # Nội dung hồ sơ (Tách dòng rõ rệt)
         desc = (
             f"📌 **Displayname:** {display_name}\n"
+            desc += f"──────────────────\n"
             f"👤 **Username:** {actual_name}\n"
+            desc += f"──────────────────\n"
             f"🆔 **Roblox ID:** {user_id}\n"
+            desc += f"──────────────────\n"
             f"🛡️ **Safe Chat:** {safe_chat}\n"
+            desc += f"──────────────────\n"
             f"🗓️ **Ngày gia nhập:** {created_date.strftime('%d/%m/%Y')}\n"
+            desc += f"──────────────────\n"
             f"⏳ **Tuổi tài khoản:** {age} ngày\n"
+            desc += f"──────────────────\n"
             f"👥 **Số bạn bè:** {friends} người\n"
+            desc += f"──────────────────\n"
             f"🏰 **Số group tham gia:** {len(all_groups)}\n\n"
-            f"──────────────────\n\n"
         )
 
         if warns:
@@ -132,7 +138,6 @@ async def kiemtra(ctx, username: str):
 
         desc += "🚫 **GROUP BỊ BLACKLIST:**\n"
         desc += ("\n".join(bad_found) if bad_found else "✅ Không phát hiện group blacklist") + "\n\n"
-        desc += f"──────────────────\n\n"
 
         # KẾT LUẬN CUỐI CÙNG
         if not bad_found and not warns:
@@ -150,3 +155,4 @@ async def kiemtra(ctx, username: str):
         await ctx.send(f"⚠️ Lỗi: {e}")
 
 bot.run(TOKEN)
+
