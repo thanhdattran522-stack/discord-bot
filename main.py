@@ -66,7 +66,7 @@ async def blacklist_add(ctx, *, ids_str: str):
                 DANH_SACH_DEN.append(g_id)
                 added_count += 1
     save_data()
-    await ctx.send(f"✅ Đã thêm `{added_count}` ID vào kho lưu trữ. Tổng số: `{len(DAN_SACH_DEN)}`.")
+    await ctx.send(f"✅ Đã thêm `{added_count}` ID vào kho lưu trữ. Tổng số: `{len(DANH_SACH_DEN)}`.")
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -174,3 +174,4 @@ async def check_blacklist(ctx):
         for j in range(0, len(content), 2000): await ctx.send(content[j:j+2000])
 
 if TOKEN: bot.run(TOKEN)
+
