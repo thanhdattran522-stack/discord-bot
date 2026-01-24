@@ -39,20 +39,7 @@ class MyBot(commands.Bot):
 
     async def on_ready(self):
         print(f'✅ Đã đăng nhập thành công: {self.user.name}')
-        # Thông báo bot đã online vào kênh 'thông-báo'
-        for guild in self.guilds:
-            channel = discord.utils.get(guild.text_channels, name="thông-báo")
-            if channel:
-                embed = discord.Embed(
-                    title="📡 THÔNG BÁO HỆ THỐNG",
-                    description=f"**Bot KSQS đã Online và sẵn sàng trinh sát!**\nHiện đang kiểm soát: `{len(DANH_SACH_DEN)}` nhóm đen.",
-                    color=0x2ecc71,
-                    timestamp=datetime.now()
-                )
-                embed.set_footer(text="Bộ Tư Lệnh Kiểm Soát Quân Sự")
-                await channel.send(embed=embed)
-
-bot = MyBot()
+    
 
 # --- 2. XỬ LÝ LỖI VÀ TRUY XUẤT NHANH ---
 @bot.event
@@ -79,13 +66,22 @@ class GroupView(discord.ui.View):
 
 # --- 3. HỆ THỐNG LỆNH SLASH ( / ) ---
 
-@bot.tree.command(name="checkaccount", description="Trinh sát hồ sơ đối tượng trên Roblox")
+@bot.tree.command(name="checkaccount", description="Lấy thông tin đối tượng hehe")
 async def checkaccount(interaction: discord.Interaction, username: str):
-    await interaction.response.defer() 
+    await interaction.response.defer()
     async with aiohttp.ClientSession() as session:
         u_data = await fetch_roblox(session, "https://users.roblox.com/v1/usernames/users", "POST", {"usernames": [username], "excludeBannedUsers": True})
         if not u_data or not u_data.get("data"):
             return await interaction.followup.send(f"❌ Không tìm thấy đối tượng: {username}")
+        
+        u_id = u_data["data"][0]["id"]
+        g_data = await fetch_roblox(session, f"https://groups.roblox.com/v2/users/{u_id}/groups/roles")
+        all_groups = g_data.get("data", [])
+        bad_found = []
+        for g in all_groups:
+            if g['group']['id'] in DANH_SACH_DEN:
+                rank_name = g['role']['name'] 
+                bad_found.append(f"🛑 **{g['group']['name']}** (`{g['group']['id']}`)\n   └ Rank: **{rank_name}**")
         
         u_id = u_data["data"][0]["id"]
         d_name = u_data["data"][0]["displayName"]
@@ -169,13 +165,36 @@ async def blacklist_remove(interaction: discord.Interaction, ids: str):
 
 @bot.tree.command(name="check_blacklist", description="Xem danh sách group blacklist hiện có")
 async def check_blacklist(interaction: discord.Interaction):
-    if not DANH_SACH_DEN: return await interaction.response.send_message("📝 Kho dữ liệu đang trống.")
-    await interaction.response.send_message(f"📡 Đang trích xuất dữ liệu {len(DANH_SACH_DEN)} nhóm...")
+    if not DANH_SACH_DEN: 
+        return await interaction.response.send_message("📝 Kho dữ liệu hiện đang trống.")
+    
+    await interaction.response.send_message(f"📡 Đang mở danh sách {len(DANH_SACH_DEN)} groupp...")
+    
     async with aiohttp.ClientSession() as session:
         results = []
+        # Quét và lấy tên nhóm
         for g_id in DANH_SACH_DEN:
             res = await fetch_roblox(session, f"https://groups.roblox.com/v1/groups/{g_id}")
-            results.append(f"🛑 **{res.get('name', 'N/A')}** (`{g_id}`)")
-        await interaction.channel.send("\n".join(results))
+            name = res.get('name', 'N/A')
+            results.append(f"🛑 **{name}** (`{g_id}`)")
+        
+        # --- THUẬT TOÁN CHIA NHỎ TIN NHẮN ---
+        full_message = "\n".join(results)
+        # Discord giới hạn 2000-4000 ký tự, chúng ta cắt mỗi 1900 ký tự cho an toàn
+        if len(full_message) > 1900:
+            current_msg = ""
+            for line in results:
+                # Nếu thêm dòng mới vào mà vượt quá 1900 ký tự thì gửi đoạn cũ trước
+                if len(current_msg) + len(line) > 1900:
+                    await interaction.channel.send(current_msg)
+                    current_msg = line + "\n"
+                else:
+                    current_msg += line + "\n"
+            # Gửi đoạn còn dư cuối cùng
+            if current_msg:
+                await interaction.channel.send(current_msg)
+        else:
+            await interaction.channel.send(full_message)))
 
 if TOKEN: bot.run(TOKEN)
+
