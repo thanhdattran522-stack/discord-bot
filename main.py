@@ -11,7 +11,7 @@ from dateutil import parser
 # --- 1. HỆ THỐNG LƯU TRỮ VĨNH VIỄN ---
 TOKEN = os.getenv("TOKEN") 
 FILE_DB = "blacklist_data.json"
-
+CH_BLACKLIST_USER_IDS = [1124329663225929799, 1257359862594277376]
 def load_data():
     if os.path.exists(FILE_DB):
         try:
@@ -101,14 +101,24 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         created = parser.isoparse(u_info["created"]).replace(tzinfo=timezone.utc)
         age = (datetime.now(timezone.utc) - created).days
         sc = u_info.get("isVieweeSafeChat")
-
+        is_user_blacklisted = False
+        found_in_channels = []
+        for channel_id in CH_BLACKLIST_USER_IDS:
+            channel = bot.get_channel(channel_id)
+            if channel:
+                async for message in channel.history(limit=200): # Quét 200 tin nhắn gần nhất
+                    if u_name.lower() in message.content.lower():
+                        is_user_blacklisted = True
+                        found_in_channels.append(channel.name)
+                        break
         # --- PHÂN TÍCH AN NINH (Đầy đủ tiêu chuẩn & Group Blacklist) ---
         warns = []
         if sc: warns.append("🔴 Safe Chat: **BẬT**")
         if age < 100: warns.append(f"🔴 Tuổi acc: **THẤP** ({age}/100 ngày)")
         if friends < 50: warns.append(f"🔴 Bạn bè: **ÍT** ({friends}/50)")
         if len(all_groups) < 5: warns.append(f"🔴 Group: **ÍT** ({len(all_groups)}/5)")
-
+        if is_user_blacklisted:
+            warns.append(f"⛔ **Cảnh báo từ #unit blacklist hoặc #srov blacklist**\n   └ Tại: #{', '.join(found_in_channels)}")
         bad_found = []
         for g in all_groups:
             if g['group']['id'] in DANH_SACH_DEN:
@@ -203,6 +213,7 @@ async def check_blacklist(interaction: discord.Interaction):
             await interaction.followup.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
 
 
