@@ -1,43 +1,72 @@
 import discord
 from discord.ext import commands
-import aiohttp # Nâng cấp: Xử lý bất đồng bộ để chống treo bot
+from discord import app_commands
+import aiohttp
 import asyncio
 import os
 import json
 from datetime import datetime, timezone
 from dateutil import parser
 
-# --- 1. CẤU HÌNH HỆ THỐNG ---
+# --- 1. HỆ THỐNG LƯU TRỮ VĨNH VIỄN ---
 TOKEN = os.getenv("TOKEN") 
 FILE_DB = "blacklist_data.json"
 
-# Nạp dữ liệu từ kho lưu trữ
-if os.path.exists(FILE_DB):
-    with open(FILE_DB, "r") as f:
-        DANH_SACH_DEN = json.load(f)
-else:
-    DANH_SACH_DEN = []
+def load_data():
+    if os.path.exists(FILE_DB):
+        try:
+            with open(FILE_DB, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: return []
+    return []
+
+DANH_SACH_DEN = load_data()
 
 def save_data():
-    with open(FILE_DB, "w") as f:
-        json.dump(DANH_SACH_DEN, f)
+    with open(FILE_DB, "w", encoding="utf-8") as f:
+        json.dump(DANH_SACH_DEN, f, indent=4)
 
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix="?", intents=intents)
+class MyBot(commands.Bot):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.message_content = True
+        # Tối ưu hóa phản ứng nhanh và giảm lỗi RESUMED
+        super().__init__(command_prefix="?", intents=intents, heartbeat_timeout=150.0)
 
-# Hàm bổ trợ API siêu tốc
+    async def setup_hook(self):
+        await self.tree.sync()
+        print(f"📡 Đang nạp {len(DANH_SACH_DEN)} mục tiêu.")
+
+    async def on_ready(self):
+        print(f'✅ Đã đăng nhập thành công: {self.user.name}')
+        # Thông báo bot đã online vào kênh 'thông-báo'
+        for guild in self.guilds:
+            channel = discord.utils.get(guild.text_channels, name="thông-báo")
+            if channel:
+                embed = discord.Embed(
+                    title="📡 THÔNG BÁO HỆ THỐNG",
+                    description=f"**Bot KSQS đã Online và sẵn sàng trinh sát!**\nHiện đang kiểm soát: `{len(DANH_SACH_DEN)}` nhóm đen.",
+                    color=0x2ecc71,
+                    timestamp=datetime.now()
+                )
+                embed.set_footer(text="Bộ Tư Lệnh Kiểm Soát Quân Sự")
+                await channel.send(embed=embed)
+
+bot = MyBot()
+
+# --- 2. XỬ LÝ LỖI VÀ TRUY XUẤT NHANH ---
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound): return
+    raise error
+
 async def fetch_roblox(session, url, method="GET", data=None):
     try:
         if method == "POST":
-            async with session.post(url, json=data) as response:
-                return await response.json()
-        async with session.get(url) as response:
-            return await response.json()
-    except:
-        return None
+            async with session.post(url, json=data) as response: return await response.json()
+        async with session.get(url) as response: return await response.json()
+    except: return None
 
-# UI: Nút bấm trinh sát danh sách nhóm của đối tượng
 class GroupView(discord.ui.View):
     def __init__(self, group_text):
         super().__init__(timeout=60)
@@ -45,133 +74,108 @@ class GroupView(discord.ui.View):
 
     @discord.ui.button(label="Xem danh sách nhóm đối tượng", style=discord.ButtonStyle.grey, emoji="📋")
     async def check_groups(self, interaction: discord.Interaction, button: discord.ui.Button):
-        content = self.group_text[:1990] + "..." if len(self.group_text) > 2000 else self.group_text
-        await interaction.response.send_message(content=content, ephemeral=True)
+        # Trích xuất danh sách nhóm ngay lập tức (chỉ người dùng thấy)
+        await interaction.response.send_message(content=self.group_text[:2000], ephemeral=True)
 
-@bot.event
-async def on_ready():
-    print(f"✅ Hệ thống KSQS đã Online.")
+# --- 3. HỆ THỐNG LỆNH SLASH ( / ) ---
 
-# --- 2. QUẢN LÝ BLACKLIST HÀNG LOẠT (TỐI ƯU) ---
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def blacklist_add(ctx, *, ids_str: str):
-    """Add hàng loạt cách nhau bởi dấu phẩy"""
-    raw_ids = ids_str.replace(" ", "").split(",")
-    added_count = 0
-    for r_id in raw_ids:
-        if r_id.isdigit():
-            g_id = int(r_id)
-            if g_id not in DANH_SACH_DEN:
-                DANH_SACH_DEN.append(g_id)
-                added_count += 1
-    save_data()
-    await ctx.send(f"✅ Đã thêm `{added_count}` ID vào kho lưu trữ. Tổng số: `{len(DANH_SACH_DEN)}`.")
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def blacklist_remove(ctx, *, ids_str: str):
-    """Xoá hàng loạt cách nhau bởi dấu phẩy"""
-    raw_ids = ids_str.replace(" ", "").split(",")
-    removed_count = 0
-    for r_id in raw_ids:
-        if r_id.isdigit():
-            g_id = int(r_id)
-            if g_id in DANH_SACH_DEN:
-                DANH_SACH_DEN.remove(g_id)
-                removed_count += 1
-    save_data()
-    await ctx.send(f"🗑️ Đã gỡ bỏ `{removed_count}` ID khỏi kho lưu trữ.")
-
-# --- 3. LỆNH KIỂM TRA TÁC CHIẾN (FULL OPTION + FIX TREO) ---
-@bot.command()
-async def kiemtra(ctx, username: str):
+@bot.tree.command(name="checkaccount", description="Trinh sát hồ sơ đối tượng trên Roblox")
+async def checkaccount(interaction: discord.Interaction, username: str):
+    await interaction.response.defer() 
     async with aiohttp.ClientSession() as session:
-        try:
-            # Lấy thông tin cơ bản
-            u_data = await fetch_roblox(session, "https://users.roblox.com/v1/usernames/users", "POST", {"usernames": [username], "excludeBannedUsers": True})
-            if not u_data or not u_data.get("data"):
-                return await ctx.send(f"❌ Không tìm thấy đối tượng: {username}")
-            
-            u_id = u_data["data"][0]["id"]
-            
-            # Chạy song song các request để tối ưu tốc độ
-            tasks = [
-                fetch_roblox(session, f"https://users.roblox.com/v1/users/{u_id}"),
-                fetch_roblox(session, f"https://friends.roblox.com/v1/users/{u_id}/friends/count"),
-                fetch_roblox(session, f"https://groups.roblox.com/v2/users/{u_id}/groups/roles"),
-                fetch_roblox(session, f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={u_id}&size=420x420&format=Png")
-            ]
-            u_info, friends_data, g_data, thumb_data = await asyncio.gather(*tasks)
-            
-            friends = friends_data.get("count", 0)
-            all_groups = g_data.get("data", [])
-            thumb = thumb_data["data"][0]["imageUrl"]
-            
-            created = parser.isoparse(u_info["created"]).replace(tzinfo=timezone.utc)
-            age = (datetime.now(timezone.utc) - created).days
-            sc = u_info.get("isVieweeSafeChat")
+        u_data = await fetch_roblox(session, "https://users.roblox.com/v1/usernames/users", "POST", {"usernames": [username], "excludeBannedUsers": True})
+        if not u_data or not u_data.get("data"):
+            return await interaction.followup.send(f"❌ Không tìm thấy đối tượng: {username}")
+        
+        u_id = u_data["data"][0]["id"]
+        d_name = u_data["data"][0]["displayName"]
+        u_name = u_data["data"][0]["name"]
+        profile_url = f"https://www.roblox.com/users/{u_id}/profile"
+        
+        # Chạy song song nhiều tác vụ để tăng tốc độ phản ứng cực nhanh
+        tasks = [
+            fetch_roblox(session, f"https://users.roblox.com/v1/users/{u_id}"),
+            fetch_roblox(session, f"https://friends.roblox.com/v1/users/{u_id}/friends/count"),
+            fetch_roblox(session, f"https://groups.roblox.com/v2/users/{u_id}/groups/roles"),
+            fetch_roblox(session, f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={u_id}&size=420x420&format=Png")
+        ]
+        u_info, friends_data, g_data, thumb_data = await asyncio.gather(*tasks)
+        
+        friends = friends_data.get("count", 0)
+        all_groups = g_data.get("data", [])
+        created = parser.isoparse(u_info["created"]).replace(tzinfo=timezone.utc)
+        age = (datetime.now(timezone.utc) - created).days
+        sc = u_info.get("isVieweeSafeChat")
 
-            # Phân tích an ninh
-            warns = []
-            if sc: warns.append("🔴 Safe Chat: **BẬT**")
-            if age < 100: warns.append(f"🔴 Tuổi acc: **THẤP** ({age}/100 ngày)")
-            if friends < 50: warns.append(f"🔴 Bạn bè: **ÍT** ({friends}/50)")
-            if len(all_groups) < 5: warns.append(f"🔴 Nhóm: **ÍT** ({len(all_groups)}/5)")
+        # --- PHÂN TÍCH AN NINH (Đầy đủ tiêu chuẩn & Group Blacklist) ---
+        warns = []
+        if sc: warns.append("🔴 Safe Chat: **BẬT**")
+        if age < 100: warns.append(f"🔴 Tuổi acc: **THẤP** ({age}/100 ngày)")
+        if friends < 50: warns.append(f"🔴 Bạn bè: **ÍT** ({friends}/50)")
+        if len(all_groups) < 5: warns.append(f"🔴 Group: **ÍT** ({len(all_groups)}/5)")
 
-            # Quét Blacklist & Rank
-            bad_found = [f"🛑 **{g['group']['name']}** ({g['group']['id']})\n   └ Rank: **{g['role']['name']}**" 
-                         for g in all_groups if g['group']['id'] in DANH_SACH_DEN]
+        bad_found = [f"🛑 **{g['group']['name']}** ({g['group']['id']})\n   └ Rank: **{g['role']['name']}**" 
+                     for g in all_groups if g['group']['id'] in DANH_SACH_DEN]
 
-            # Khởi tạo Embed
-            embed = discord.Embed(title="HỆ THỐNG KIỂM TRA KSQS SROV", color=0xff0000 if (warns or bad_found) else 0x2ecc71)
-            embed.set_author(name="Bộ Tư Lệnh Kiểm Soát Quân Sự")
-            embed.set_thumbnail(url=thumb)
-            
-            desc = [
-                f"📌 **Displayname:** {u_data['data'][0]['displayName']}",
-                f"👤 **Username:** {u_data['data'][0]['name']}",
-                f"🆔 **Roblox ID:** {u_id}",
-                f"🛡️ **Safe Chat:** {'🔴 Bật' if sc else '🟢 Tắt'}",
-                f"🗓️ **Gia nhập:** {created.strftime('%d/%m/%Y')}",
-                f"⏳ **Tuổi acc:** {age} ngày",
-                f"👥 **Bạn bè:** {friends}",
-                f"🏰 **Số group:** {len(all_groups)}",
-                "──────────────────",
-                "⚠️ **Cảnh báo tiêu chuẩn:**",
-                ("\n".join(warns) if warns else "✅ Không có"),
-                "",
-                "🚫 **Group blacklist:**",
-                ("\n".join(bad_found) if bad_found else "✅ Không phát hiện"),
-                "──────────────────",
-                f"**KẾT LUẬN: {'❌ KHÔNG ĐỦ ĐIỀU KIỆN' if (warns or bad_found) else '✅ ĐỦ ĐIỀU KIỆN'}**"
-            ]
-            embed.description = "\n".join(desc)
-            
-            group_list_text = f"📋 **TẤT CẢ NHÓM CỦA {username.upper()}:**\n\n" + "\n".join([f"• {g['group']['name']} ({g['group']['id']}) - Rank: {g['role']['name']}" for g in all_groups])
-            view = GroupView(group_list_text)
+        # --- GIAO DIỆN EMBED CHUẨN KSQS ---
+        embed = discord.Embed(title="HỆ THỐNG KIỂM TRA KSQS SROV", color=0x2ecc71 if not (warns or bad_found) else 0xff0000)
+        embed.set_author(name="Bộ Tư Lệnh Kiểm Soát Quân Sự")
+        embed.set_thumbnail(url=thumb_data["data"][0]["imageUrl"])
+        
+        embed.add_field(name="📌 Displayname:", value=d_name, inline=True)
+        embed.add_field(name="👤 Username:", value=f"[{u_name}]({profile_url})", inline=True) # Liên kết link với username
+        embed.add_field(name="🆔 Roblox ID:", value=f"`{u_id}`", inline=True)
+        embed.add_field(name="🛡️ Safe Chat:", value="🟢 Tắt" if not sc else "🔴 Bật", inline=True)
+        embed.add_field(name="🗓️ Gia nhập:", value=created.strftime('%d/%m/%Y'), inline=True)
+        embed.add_field(name="⏳ Tuổi acc:", value=f"{age} ngày", inline=True)
+        embed.add_field(name="👤 Bạn bè:", value=str(friends), inline=True)
+        embed.add_field(name="🏰 Số group:", value=str(len(all_groups)), inline=True)
+        
+        embed.add_field(name="──────────────────", value="⚠️ **Cảnh báo tiêu chuẩn:**", inline=False)
+        embed.add_field(name="_ _", value="✅ Không có ✅" if not warns else "\n".join(warns), inline=False)
+        
+        embed.add_field(name="──────────────────", value="🚫 **Group blacklist:**", inline=False)
+        embed.add_field(name="_ _", value="✅ Không phát hiện ✅" if not bad_found else "\n".join(bad_found), inline=False)
+        
+        embed.add_field(name="──────────────────", value=f"**KẾT LUẬN: {'✅ ĐỦ ĐIỀU KIỆN ✅' if not (warns or bad_found) else '❌ KHÔNG ĐỦ ĐIỀU KIỆN ❌'}**", inline=False)
+        
+        # Danh sách nhóm cho nút bấm
+        group_list_text = f"📋 **DANH SÁCH NHÓM CỦA {u_name.upper()}:**\n\n" + "\n".join([f"• {g['group']['name']} ({g['group']['id']})" for g in all_groups])
+        await interaction.followup.send(embed=embed, view=GroupView(group_list_text))
 
-            await ctx.send(embed=embed, view=view)
-        except Exception as e: await ctx.send(f"⚠️ Lỗi: {e}")
+@bot.tree.command(name="blacklist_add", description="Thêm ID nhóm vào danh sách đen vĩnh viễn")
+async def blacklist_add(interaction: discord.Interaction, ids: str):
+    if not interaction.user.guild_permissions.administrator: return
+    global DANH_SACH_DEN
+    raw_ids = ids.replace(" ", "").split(",")
+    added = 0
+    for r_id in raw_ids:
+        if r_id.isdigit() and int(r_id) not in DANH_SACH_DEN:
+            DANH_SACH_DEN.append(int(r_id)); added += 1
+    save_data() # Lưu trữ vĩnh viễn không mất ID khi sửa code
+    await interaction.response.send_message(f"✅ Đã lưu `{added}` ID. Tổng kho lưu trữ: `{len(DANH_SACH_DEN)}`.")
 
-# --- 4. LỆNH XEM TOÀN BỘ DANH SÁCH ĐEN (FIX LAG) ---
-@bot.command()
-async def check_blacklist(ctx):
-    if not DANH_SACH_DEN: return await ctx.send("📝 Kho đang trống dữ liệu.")
-    await ctx.send(f"📡 **Đang trinh sát {len(DANH_SACH_DEN)} nhóm...** (Vui lòng chờ)")
-    
+@bot.tree.command(name="blacklist_remove", description="Gỡ bỏ ID khỏi kho vĩnh viễn")
+async def blacklist_remove(interaction: discord.Interaction, ids: str):
+    if not interaction.user.guild_permissions.administrator: return
+    global DANH_SACH_DEN
+    raw_ids = ids.replace(" ", "").split(",")
+    removed = 0
+    for r_id in raw_ids:
+        if r_id.isdigit() and int(r_id) in DANH_SACH_DEN:
+            DANH_SACH_DEN.remove(int(r_id)); removed += 1
+    save_data() # Cập nhật lại file vĩnh viễn
+    await interaction.response.send_message(f"✅ Đã xóa thành công `{removed}` ID GROUP.")
+
+@bot.tree.command(name="check_blacklist", description="Xem danh sách group blacklist hiện có")
+async def check_blacklist(interaction: discord.Interaction):
+    if not DANH_SACH_DEN: return await interaction.response.send_message("📝 Kho dữ liệu đang trống.")
+    await interaction.response.send_message(f"📡 Đang trích xuất dữ liệu {len(DANH_SACH_DEN)} nhóm...")
     async with aiohttp.ClientSession() as session:
-        lines = []
-        for i in range(0, len(DANH_SACH_DEN), 10): # Xử lý theo đợt 10 nhóm
-            batch = DANH_SACH_DEN[i:i+10]
-            for g_id in batch:
-                res = await fetch_roblox(session, f"https://groups.roblox.com/v1/groups/{g_id}")
-                name = res.get("name", "N/A") if res else "Lỗi API"
-                lines.append(f"🛑 **{name}** (`{g_id}`)")
-            await asyncio.sleep(0.5) # Nghỉ để tránh bị Roblox chặn
-                
-        content = f"📋 **DANH SÁCH ĐEN ({len(DANH_SACH_DEN)} NHÓM):**\n\n" + "\n".join(lines)
-        for j in range(0, len(content), 2000): await ctx.send(content[j:j+2000])
+        results = []
+        for g_id in DANH_SACH_DEN:
+            res = await fetch_roblox(session, f"https://groups.roblox.com/v1/groups/{g_id}")
+            results.append(f"🛑 **{res.get('name', 'N/A')}** (`{g_id}`)")
+        await interaction.channel.send("\n".join(results))
 
 if TOKEN: bot.run(TOKEN)
-
