@@ -81,7 +81,7 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         for g in all_groups:
             if g['group']['id'] in DANH_SACH_DEN:
                 rank_name = g['role']['name'] 
-                bad_found.append(f"🛑 **{g['group']['name']}** (`{g['group']['id']}`)\n   └ Rank: **{rank_name}**")
+                bad_found.append(f"🛑 **{g['group']['name']}** (`{g['group']['id']}`): **{rank_name}**")
         
         u_id = u_data["data"][0]["id"]
         d_name = u_data["data"][0]["displayName"]
@@ -110,7 +110,7 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         if friends < 50: warns.append(f"🔴 Bạn bè: **ÍT** ({friends}/50)")
         if len(all_groups) < 5: warns.append(f"🔴 Group: **ÍT** ({len(all_groups)}/5)")
 
-        bad_found = [f"🛑 **{g['group']['name']}** ({g['group']['id']})\n   └ Rank: **{g['role']['name']}**" 
+        bad_found = [f"🛑 **{g['group']['name']}** ({g['group']['id']}): **{g['role']['name']}**" 
                      for g in all_groups if g['group']['id'] in DANH_SACH_DEN]
 
         # --- GIAO DIỆN EMBED CHUẨN KSQS ---
@@ -127,19 +127,19 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         embed.add_field(name="👤 Bạn bè:", value=str(friends), inline=True)
         embed.add_field(name="🏰 Số group:", value=str(len(all_groups)), inline=True)
         
-        embed.add_field(name="──────────────────", value="⚠️ **Cảnh báo tiêu chuẩn:**", inline=False)
-        embed.add_field(name="_ _", value="✅ Không có ✅" if not warns else "\n".join(warns), inline=False)
+        embed.add_field(name="─────────⭐─────────", value="⚠️ **Cảnh báo tiêu chuẩn:**", inline=False)
+        embed.add_field(name="_ _", value="Không có ✅" if not warns else "/n".join(warns), inline=False)
         
-        embed.add_field(name="──────────────────", value="🚫 **Group blacklist:**", inline=False)
-        embed.add_field(name="_ _", value="✅ Không phát hiện ✅" if not bad_found else "\n".join(bad_found), inline=False)
+        embed.add_field(name="─────────⭐─────────", value="🚫 **Group blacklist:**", inline=False)
+        embed.add_field(name="_ _", value="Không phát hiện ✅" if not bad_found else "/n".join(bad_found), inline=False)
         
-        embed.add_field(name="──────────────────", value=f"**KẾT LUẬN: {'✅ ĐỦ ĐIỀU KIỆN ✅' if not (warns or bad_found) else '❌ KHÔNG ĐỦ ĐIỀU KIỆN ❌'}**", inline=False)
+        embed.add_field(name="─────────⭐─────────", value=f"**KẾT LUẬN: {'ĐỦ ĐIỀU KIỆN ✅' if not (warns or bad_found) else '❌ KHÔNG ĐỦ ĐIỀU KIỆN ❌'}**", inline=False)
         
         # Danh sách nhóm cho nút bấm
         group_list_text = f"📋 **DANH SÁCH NHÓM CỦA {u_name.upper()}:**\n\n" + "\n".join([f"• {g['group']['name']} ({g['group']['id']})" for g in all_groups])
         await interaction.followup.send(embed=embed, view=GroupView(group_list_text))
 
-@bot.tree.command(name="blacklist_add", description="Thêm ID nhóm vào danh sách đen vĩnh viễn")
+@bot.tree.command(name="blacklist_add", description="Thêm ID nhóm vào group blacklist")
 async def blacklist_add(interaction: discord.Interaction, ids: str):
     if not interaction.user.guild_permissions.administrator: return
     global DANH_SACH_DEN
@@ -176,7 +176,7 @@ async def check_blacklist(interaction: discord.Interaction):
         for g_id in DANH_SACH_DEN:
             res = await fetch_roblox(session, f"https://groups.roblox.com/v1/groups/{g_id}")
             name = res.get('name', 'N/A')
-            results.append(f"🛑 **{name}** (`{g_id}`)")
+            results.append(f"🛑 **{name}** (`{g_id}`): **{rank_name}**")
         
         # --- THUẬT TOÁN CHIA NHỎ TIN NHẮN ---
         full_message = "\n".join(results)
@@ -194,7 +194,8 @@ async def check_blacklist(interaction: discord.Interaction):
             if current_msg:
                 await interaction.channel.send(current_msg)
         else:
-            await interaction.channel.send(full_message)))
+            await interaction.channel.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
