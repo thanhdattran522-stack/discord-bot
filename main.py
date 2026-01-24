@@ -40,7 +40,7 @@ class MyBot(commands.Bot):
     async def on_ready(self):
         print(f'✅ Đã đăng nhập thành công: {self.user.name}')
     
-
+bot = MyBot()
 # --- 2. XỬ LÝ LỖI VÀ TRUY XUẤT NHANH ---
 @bot.event
 async def on_command_error(ctx, error):
@@ -197,5 +197,6 @@ async def check_blacklist(interaction: discord.Interaction):
             await interaction.channel.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
 
