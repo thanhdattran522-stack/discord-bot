@@ -77,12 +77,11 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         u_id = u_data["data"][0]["id"]
         g_data = await fetch_roblox(session, f"https://groups.roblox.com/v2/users/{u_id}/groups/roles")
         all_groups = g_data.get("data", [])
-        bad_found = []
+      bad_found = []
         for g in all_groups:
             if g['group']['id'] in DANH_SACH_DEN:
-                rank_name = g['role']['name'] 
-                bad_found.append(f"🛑 **{g['group']['name']}** (`{g['group']['id']}`): **{rank_name}**")
-        
+                rank_name = g['role']['name']
+                bad_found.append(f"🛑 **{g['group']['name']}** (`{g['group']['id']}`) Rank: **{rank_name}**")
         u_id = u_data["data"][0]["id"]
         d_name = u_data["data"][0]["displayName"]
         u_name = u_data["data"][0]["name"]
@@ -127,11 +126,11 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         embed.add_field(name="👤 Bạn bè:", value=str(friends), inline=True)
         embed.add_field(name="🏰 Số group:", value=str(len(all_groups)), inline=True)
         
-        embed.add_field(name="─────────⭐─────────", value="⚠️ **Cảnh báo tiêu chuẩn:**", inline=False)
-        embed.add_field(name="_ _", value="Không có ✅" if not warns else "/n".join(warns), inline=False)
+       embed.add_field(name="─────────⭐─────────", value="⚠️ **Cảnh báo tiêu chuẩn:**", inline=False)
+        embed.add_field(name="_ _", value="Không có ✅" if not warns else "\n".join(warns), inline=False) # Đã sửa \n
         
         embed.add_field(name="─────────⭐─────────", value="🚫 **Group blacklist:**", inline=False)
-        embed.add_field(name="_ _", value="Không phát hiện ✅" if not bad_found else "/n".join(bad_found), inline=False)
+        embed.add_field(name="_ _", value="Không phát hiện ✅" if not bad_found else "\n".join(bad_found), inline=False) # Đã sửa \n
         
         embed.add_field(name="─────────⭐─────────", value=f"**KẾT LUẬN: {'ĐỦ ĐIỀU KIỆN ✅' if not (warns or bad_found) else '❌ KHÔNG ĐỦ ĐIỀU KIỆN ❌'}**", inline=False)
         
@@ -168,35 +167,31 @@ async def check_blacklist(interaction: discord.Interaction):
     if not DANH_SACH_DEN: 
         return await interaction.response.send_message("📝 Kho dữ liệu hiện đang trống.")
     
-    await interaction.response.send_message(f"📡 Đang mở danh sách {len(DANH_SACH_DEN)} groupp...")
+    await interaction.response.defer() # Dùng defer để bot có thời gian quét 104 nhóm
     
     async with aiohttp.ClientSession() as session:
         results = []
-        # Quét và lấy tên nhóm
         for g_id in DANH_SACH_DEN:
             res = await fetch_roblox(session, f"https://groups.roblox.com/v1/groups/{g_id}")
             name = res.get('name', 'N/A')
-            results.append(f"🛑 **{name}** (`{g_id}`): **{g['role']['name']}**")
+            results.append(f"🛑 **{name}** (`{g_id}`)") # Đã xóa biến g lỗi
         
-        # --- THUẬT TOÁN CHIA NHỎ TIN NHẮN ---
         full_message = "\n".join(results)
-        # Discord giới hạn 2000-4000 ký tự, chúng ta cắt mỗi 1900 ký tự cho an toàn
         if len(full_message) > 1900:
             current_msg = ""
             for line in results:
-                # Nếu thêm dòng mới vào mà vượt quá 1900 ký tự thì gửi đoạn cũ trước
                 if len(current_msg) + len(line) > 1900:
                     await interaction.channel.send(current_msg)
                     current_msg = line + "\n"
                 else:
                     current_msg += line + "\n"
-            # Gửi đoạn còn dư cuối cùng
             if current_msg:
-                await interaction.channel.send(current_msg)
+                await interaction.followup.send(current_msg) # Dùng followup để kết thúc lệnh
         else:
-            await interaction.channel.send(full_message)
+            await interaction.followup.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
 
 
