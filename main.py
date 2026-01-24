@@ -109,30 +109,42 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         if friends < 50: warns.append(f"🔴 Bạn bè: **ÍT** ({friends}/50)")
         if len(all_groups) < 5: warns.append(f"🔴 Group: **ÍT** ({len(all_groups)}/5)")
 
-        bad_found = [f"🛑 **{g['group']['name']}** ({g['group']['id']}): **{g['role']['name']}**" 
-                     for g in all_groups if g['group']['id'] in DANH_SACH_DEN]
+      bad_found = []
+        for g in all_groups:
+            if g['group']['id'] in DANH_SACH_DEN:
+                rank = g['role']['name']
+                bad_found.append(f"🛑 **{g['group']['name']}** (`{g['group']['id']}`) **{rank}**")
 
         # --- GIAO DIỆN EMBED CHUẨN KSQS ---
-        embed = discord.Embed(title="HỆ THỐNG KIỂM TRA KSQS SROV", color=0x2ecc71 if not (warns or bad_found) else 0xff0000)
+        embed = discord.Embed(title="HỆ THỐNG KIỂM TRA KSQS SROV", color=0x2ecc71 if not bad_found else 0xff0000)
         embed.set_author(name="Bộ Tư Lệnh Kiểm Soát Quân Sự")
         embed.set_thumbnail(url=thumb_data["data"][0]["imageUrl"])
         
-        embed.add_field(name="📌 Displayname:", value=d_name, inline=True)
-        embed.add_field(name="👤 Username:", value=f"[{u_name}]({profile_url})", inline=True) # Liên kết link với username
-        embed.add_field(name="🆔 Roblox ID:", value=f"`{u_id}`", inline=True)
-        embed.add_field(name="🛡️ Safe Chat:", value="🟢 Tắt" if not sc else "🔴 Bật", inline=True)
-        embed.add_field(name="🗓️ Gia nhập:", value=created.strftime('%d/%m/%Y'), inline=True)
-        embed.add_field(name="⏳ Tuổi acc:", value=f"{age} ngày", inline=True)
-        embed.add_field(name="👤 Bạn bè:", value=str(friends), inline=True)
-        embed.add_field(name="🏰 Số group:", value=str(len(all_groups)), inline=True)
+        # Cấu trúc thông tin tinh gọn
+        info_text = (
+            f"📌 **Displayname:** {d_name}\n"
+            f"👤 **Username:** [{u_name}]({profile_url})\n"
+            f"🆔 **Roblox ID:** `{u_id}`\n"
+            f"🛡️ **Safe Chat:** {'🟢 Tắt' if not sc else '🔴 Bật'}\n"
+            f"🗓️ **Gia nhập:** {created.strftime('%d/%m/%Y')}\n"
+            f"⏳ **Tuổi acc:** {age} ngày\n"
+            f"👤 **Bạn bè:** {friends}\n"
+            f"🏰 **Số group:** {len(all_groups)}"
+        )
+        embed.description = info_text
+
+        # Phần Cảnh báo & Blacklist
+        embed.add_field(name="──────────────────", value="⚠️ **Cảnh báo tiêu chuẩn:**", inline=False)
+        embed.add_field(name="_ _", value="✅ Không có" if not warns else "\n".join(warns), inline=False) # Fix \n
         
-       embed.add_field(name="─────────⭐─────────", value="⚠️ **Cảnh báo tiêu chuẩn:**", inline=False)
-        embed.add_field(name="_ _", value="Không có ✅" if not warns else "\n".join(warns), inline=False) # Đã sửa \n
+        embed.add_field(name="──────────────────", value="🚫 **Group blacklist:**", inline=False)
+        embed.add_field(name="_ _", value="✅ Không phát hiện" if not bad_found else "\n".join(bad_found), inline=False)
         
-        embed.add_field(name="─────────⭐─────────", value="🚫 **Group blacklist:**", inline=False)
-        embed.add_field(name="_ _", value="Không phát hiện ✅" if not bad_found else "\n".join(bad_found), inline=False) # Đã sửa \n
+        embed.add_field(name="──────────────────", value=f"**KẾT LUẬN: {'✅ ĐỦ ĐIỀU KIỆN' if not (warns or bad_found) else '❌ KHÔNG ĐỦ ĐIỀU KIỆN'}**", inline=False)
         
-        embed.add_field(name="─────────⭐─────────", value=f"**KẾT LUẬN: {'ĐỦ ĐIỀU KIỆN ✅' if not (warns or bad_found) else '❌ KHÔNG ĐỦ ĐIỀU KIỆN ❌'}**", inline=False)
+        # Nút bấm danh sách nhóm
+        group_list_text = f"📋 **DANH SÁCH NHÓM CỦA {u_name.upper()}:**\n\n" + "\n".join([f"• {g['group']['name']} ({g['group']['id']})" for g in all_groups])
+        await interaction.followup.send(embed=embed, view=GroupView(group_list_text))
         
         # Danh sách nhóm cho nút bấm
         group_list_text = f"📋 **DANH SÁCH NHÓM CỦA {u_name.upper()}:**\n\n" + "\n".join([f"• {g['group']['name']} ({g['group']['id']})" for g in all_groups])
@@ -191,6 +203,7 @@ async def check_blacklist(interaction: discord.Interaction):
             await interaction.followup.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
 
 
