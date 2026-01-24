@@ -122,7 +122,7 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         if friends < 50: warns.append(f"🔴 Bạn bè: **ÍT** ({friends}/50)")
         if len(all_groups) < 5: warns.append(f"🔴 Group: **ÍT** ({len(all_groups)}/5)")
         if is_user_blacklisted:
-            warns.append(f"⛔ **Cảnh báo từ #{', '.join(found_in_channels)}(cần check lại nếu có unblacklist)**)
+            warns.append(f"⛔ **Cảnh báo từ unit blacklist(cần kiểm tra lại)**\n   └ Tại: #{', '.join(found_in_channels)}")
         bad_found = []
         for g in all_groups:
             if g['group']['id'] in DANH_SACH_DEN:
@@ -215,6 +215,7 @@ async def check_blacklist(interaction: discord.Interaction):
         else: await interaction.followup.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
 
 
