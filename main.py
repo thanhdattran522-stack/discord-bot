@@ -176,7 +176,7 @@ async def check_blacklist(interaction: discord.Interaction):
         for g_id in DANH_SACH_DEN:
             res = await fetch_roblox(session, f"https://groups.roblox.com/v1/groups/{g_id}")
             name = res.get('name', 'N/A')
-            results.append(f"🛑 **{name}** (`{g_id}`): **{rank_name}**")
+            results.append(f"🛑 **{name}** (`{g_id}`): **{g['role']['name']}**")
         
         # --- THUẬT TOÁN CHIA NHỎ TIN NHẮN ---
         full_message = "\n".join(results)
@@ -197,6 +197,7 @@ async def check_blacklist(interaction: discord.Interaction):
             await interaction.channel.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
 
 
