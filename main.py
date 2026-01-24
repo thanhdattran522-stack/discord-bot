@@ -158,7 +158,11 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         embed.add_field(name="──────────────────", value="🚫 **Group blacklist:**", inline=False)
         embed.add_field(name="_ _", value="✅ Không phát hiện" if not bad_found else "\n".join(bad_found), inline=False)
         
-        embed.add_field(name="──────────────────", value=f"**KẾT LUẬN: {'❌ KHÔNG ĐỦ ĐIỀU KIỆN ❌' if is_fail else '✅ ĐỦ ĐIỀU KIỆN ✅'}**", inline=False)
+        embed.add_field(
+            name="──────────────────", 
+            value=f"**KẾT LUẬN: {'❌ KHÔNG ĐỦ ĐIỀU KIỆN ❌' if is_fail else '✅ ĐỦ ĐIỀU KIỆN ✅'}**", 
+            inline=False
+        )
         
         # Gửi báo cáo duy nhất (Đã sửa lỗi gửi lặp)
         group_list_text = f"📋 **DANH SÁCH NHÓM CỦA {u_name.upper()}:**\n\n" + "\n".join([f"• {g['group']['name']} ({g['group']['id']})" for g in all_groups])
@@ -213,6 +217,7 @@ async def check_blacklist(interaction: discord.Interaction):
         else: await interaction.followup.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
 
 
