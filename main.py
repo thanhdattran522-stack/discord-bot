@@ -77,7 +77,7 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         u_id = u_data["data"][0]["id"]
         g_data = await fetch_roblox(session, f"https://groups.roblox.com/v2/users/{u_id}/groups/roles")
         all_groups = g_data.get("data", [])
-      bad_found = []
+        bad_found = []
         for g in all_groups:
             if g['group']['id'] in DANH_SACH_DEN:
                 rank_name = g['role']['name']
@@ -203,6 +203,7 @@ async def check_blacklist(interaction: discord.Interaction):
             await interaction.followup.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
 
 
