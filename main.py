@@ -109,7 +109,7 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         if friends < 50: warns.append(f"🔴 Bạn bè: **ÍT** ({friends}/50)")
         if len(all_groups) < 5: warns.append(f"🔴 Group: **ÍT** ({len(all_groups)}/5)")
 
-      bad_found = []
+        bad_found = []
         for g in all_groups:
             if g['group']['id'] in DANH_SACH_DEN:
                 rank = g['role']['name']
@@ -203,6 +203,7 @@ async def check_blacklist(interaction: discord.Interaction):
             await interaction.followup.send(full_message)
 
 if TOKEN: bot.run(TOKEN)
+
 
 
 
