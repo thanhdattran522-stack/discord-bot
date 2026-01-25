@@ -11,7 +11,6 @@ from dateutil import parser
 # --- 1. HỆ THỐNG CẤU HÌNH & DỮ LIỆU ---
 TOKEN = os.getenv("TOKEN") 
 FILE_DB = "blacklist_data.json"
-# Danh sách ID kênh cấm (Tin nhắn thường & Embed)
 CH_BLACKLIST_USER_IDS = [1124329663225929799, 1257359862594277376]
 
 def load_data():
@@ -28,7 +27,7 @@ def save_data():
     with open(FILE_DB, "w", encoding="utf-8") as f:
         json.dump(DANH_SACH_DEN, f, indent=4)
 
-# --- 2. KHỞI TẠO BOT (Phải đặt trước các lệnh @bot) ---
+# --- 2. KHỞI TẠO BOT ---
 class MyBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
@@ -72,7 +71,6 @@ class GroupView(discord.ui.View):
 async def checkaccount(interaction: discord.Interaction, username: str):
     await interaction.response.defer()
     async with aiohttp.ClientSession() as session:
-        # Lấy dữ liệu ID và thông tin cơ bản
         u_data = await fetch_roblox(session, "https://users.roblox.com/v1/usernames/users", "POST", {"usernames": [username], "excludeBannedUsers": True})
         if not u_data or not u_data.get("data"):
             return await interaction.followup.send(f"❌ Không tìm thấy đối tượng: {username}")
@@ -82,7 +80,6 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         d_name = u_data["data"][0]["displayName"]
         profile_url = f"https://www.roblox.com/users/{u_id}/profile"
         
-        # Chạy đa nhiệm lấy dữ liệu chuyên sâu
         tasks = [
             fetch_roblox(session, f"https://users.roblox.com/v1/users/{u_id}"),
             fetch_roblox(session, f"https://friends.roblox.com/v1/users/{u_id}/friends/count"),
@@ -97,7 +94,6 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         age = (datetime.now(timezone.utc) - created).days
         sc = u_info.get("isVieweeSafeChat")
 
-        # --- QUÉT BLACKLIST ĐA KÊNH (SOI CẢ TIN NHẮN & KHUNG) ---
         is_user_blacklisted = False
         found_in_channels = []
         for channel_id in CH_BLACKLIST_USER_IDS:
@@ -115,7 +111,6 @@ async def checkaccount(interaction: discord.Interaction, username: str):
                         found_in_channels.append(channel.name)
                         break
 
-        # --- PHÂN TÍCH AN NINH ---
         warns = []
         if sc: warns.append("🔴 Safe Chat: **BẬT**")
         if age < 100: warns.append(f"🔴 Tuổi acc: **THẤP** ({age}/100 ngày)")
@@ -123,18 +118,19 @@ async def checkaccount(interaction: discord.Interaction, username: str):
         if len(all_groups) < 5: warns.append(f"🔴 Group: **ÍT** ({len(all_groups)}/5)")
         if is_user_blacklisted:
             warns.append(f"⛔ **Cảnh báo từ unit blacklist(cần kiểm tra lại)**\n   └ Tại: #{', '.join(found_in_channels)}")
+        
         bad_found = []
         for g in all_groups:
             if g['group']['id'] in DANH_SACH_DEN:
                 rank = g['role']['name']
                 bad_found.append(f"🛑 **{g['group']['name']}**\n   └ Rank: **{rank}**")
 
-        # --- GIAO DIỆN EMBED (SỬA LỖI MÀU SẮC & KẾT LUẬN) ---
+        # --- GIAO DIỆN EMBED (CĂN CHỈNH LỀ DÒNG 124 TRỞ ĐI) ---
         is_fail = (len(warns) > 0 or len(bad_found) > 0 or is_user_blacklisted)
         
         embed = discord.Embed(
             title="HỆ THỐNG KIỂM TRA KSQS SROV", 
-            color=0xff0000 if is_fail else 0x2ecc71 # Đã sửa lỗi màu sắc
+            color=0xff0000 if is_fail else 0x2ecc71
         )
         embed.set_author(name="Bộ Tư Lệnh Kiểm Soát Quân Sự")
         embed.set_thumbnail(url=thumb_data["data"][0]["imageUrl"])
@@ -152,17 +148,14 @@ async def checkaccount(interaction: discord.Interaction, username: str):
 
         embed.add_field(name="──────────────────", value="⚠️ **Cảnh báo tiêu chuẩn:**", inline=False)
         embed.add_field(name="_ _", value="✅ Không có" if not warns else "\n".join(warns), inline=False)
-        
         embed.add_field(name="──────────────────", value="🚫 **Group blacklist:**", inline=False)
         embed.add_field(name="_ _", value="✅ Không phát hiện" if not bad_found else "\n".join(bad_found), inline=False)
-        
         embed.add_field(
             name="──────────────────", 
             value=f"**KẾT LUẬN: {'❌ KHÔNG ĐỦ ĐIỀU KIỆN ❌' if is_fail else '✅ ĐỦ ĐIỀU KIỆN ✅'}**", 
             inline=False
         )
         
-        # Gửi báo cáo duy nhất (Đã sửa lỗi gửi lặp)
         group_list_text = f"📋 **DANH SÁCH NHÓM CỦA {u_name.upper()}:**\n\n" + "\n".join([f"• {g['group']['name']} ({g['group']['id']})" for g in all_groups])
         await interaction.followup.send(embed=embed, view=GroupView(group_list_text))
 
